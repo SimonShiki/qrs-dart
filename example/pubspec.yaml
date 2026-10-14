@@ -1,0 +1,32 @@
+name: qrs_dart_example
+description: All-platform example app that verifies the qrs_dart package by sending and receiving files as animated QR code streams.
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: ^3.9.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  qrs_dart:
+    path: ../
+  # Material 3 Expressive UI, the same stack Yukari uses (see Yukari's lib/main.dart).
+  material_ui: ^1.4.0
+  m3e_core: ^1.1.4
+  # File picking and saving on every platform.
+  file_picker: ^13.1.0
+  # Camera scanning where the platform provides a camera.
+  mobile_scanner: ^7.4.2
+  # Yukari's state-management convention.
+  signals: ^7.1.0
+  signals_flutter: ^7.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

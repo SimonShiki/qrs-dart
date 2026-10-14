@@ -1,0 +1,28 @@
+# Static analysis for the qrs_dart package.
+#
+# The package follows the recommended lint set, with the analyzer's strict
+# language modes enabled so that implicit `dynamic`, unsafe casts and raw types
+# are reported instead of silently inferred. The same configuration is used by
+# the example app.
+include: package:lints/recommended.yaml
+
+analyzer:
+  language:
+    strict-casts: true
+    strict-inference: true
+    strict-raw-types: true
+  errors:
+    # Keep the port honest about upstream behaviour it reproduces on purpose.
+    todo: ignore
+  exclude:
+    - example/build/**
+    - example/.dart_tool/**
+
+linter:
+  rules:
+    - always_declare_return_types
+    - avoid_dynamic_calls
+    - avoid_print
+    - directives_ordering
+    - prefer_final_locals
+    - unawaited_futures

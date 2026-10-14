@@ -1,0 +1,24 @@
+# Analyzer configuration for the qrs_dart example app.
+#
+# Uses the Flutter recommended lints plus the analyzer's strict language modes,
+# matching the package's own analysis_options.yaml.
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  language:
+    strict-casts: true
+    strict-inference: true
+    strict-raw-types: true
+  exclude:
+    - build/**
+    - android/**
+    - ios/**
+    - web/**
+    - windows/**
+    - macos/**
+    - linux/**
+
+linter:
+  rules:
+    - always_declare_return_types
+    - directives_ordering

@@ -1,0 +1,24 @@
+# Dart, pub and the output they generate.
+# https://dart.dev/guides/libraries/private-files
+.dart_tool/
+.packages
+build/
+doc/api/
+
+# Library packages must not commit the resolution lockfile: consumers resolve
+# their own versions. Applications do commit it, so the example app keeps its
+# example/pubspec.lock tracked.
+# https://dart.dev/guides/libraries/private-files#pubspeclock
+/pubspec.lock
+
+# Test coverage output.
+coverage/
+
+# Editors and operating systems.
+.idea/
+*.iml
+*.ipr
+*.iws
+.DS_Store
+Thumbs.db
+*.swp
