@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
+import '../../design/tokens.dart';
 import '../../widgets/section_card.dart';
 import '../send_controller.dart';
 
@@ -21,6 +22,7 @@ class StatsCard extends StatelessWidget {
         final renderFps = renderMicros == 0 ? 0.0 : 1000000 / renderMicros;
 
         return SectionCard(
+          variant: SectionCardVariant.outlined,
           title: 'Inspect',
           subtitle: 'Fountain and rendering counters',
           child: Column(
@@ -36,6 +38,12 @@ class StatsCard extends StatelessWidget {
               ),
               StatRow('Frames sent', '${controller.frameCount.value}'),
               StatRow('Render FPS', renderFps.toStringAsFixed(2)),
+              // Divider: an `outline-variant` hairline groups the per-frame
+              // counters apart from the per-transfer ones.
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: M3Spacing.small),
+                child: Divider(),
+              ),
               StatRow('Indices', '${frame?.indices ?? const <int>[]}'),
               StatRow('Checksum', '${frame?.block.checksum ?? 0}'),
               StatRow('Bitrate', _bitrate(frame?.block.bytes, renderFps)),

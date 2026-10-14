@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../widgets/page_body.dart';
 import 'send_controller.dart';
 import 'widgets/gif_export_card.dart';
 import 'widgets/settings_card.dart';
@@ -27,26 +28,33 @@ class _SendPageState extends State<SendPage> {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.only(bottom: 24),
+    return M3PageBody(
+      scrollKey: const PageStorageKey<String>('send-page'),
+      headline: 'Stream a payload',
+      supportingText:
+          'Every frame carries one Luby Transform block. Point the scanner at '
+          'the stream; frames may be missed without losing the transfer.',
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-          child: Text('Send', style: Theme.of(context).textTheme.headlineSmall),
+        SourceCard(
+          key: const ValueKey<String>('SourceCard'),
+          controller: _controller,
         ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-          child: Text(
-            'Every frame carries one Luby Transform block. Point the scanner at '
-            'the stream; frames may be missed without losing the transfer.',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
+        StreamCard(
+          key: const ValueKey<String>('StreamCard'),
+          controller: _controller,
         ),
-        SourceCard(controller: _controller),
-        StreamCard(controller: _controller),
-        SettingsCard(controller: _controller),
-        StatsCard(controller: _controller),
-        GifExportCard(controller: _controller),
+        SettingsCard(
+          key: const ValueKey<String>('SettingsCard'),
+          controller: _controller,
+        ),
+        StatsCard(
+          key: const ValueKey<String>('StatsCard'),
+          controller: _controller,
+        ),
+        GifExportCard(
+          key: const ValueKey<String>('GifExportCard'),
+          controller: _controller,
+        ),
       ],
     );
   }

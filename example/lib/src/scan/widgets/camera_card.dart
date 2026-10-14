@@ -1,10 +1,12 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
+import '../../design/tokens.dart';
 import '../../widgets/section_card.dart';
 import '../scan_controller.dart';
 
-/// Camera preview and QR detection, or an explanation when unsupported.
+/// Camera preview and QR detection, or an explanation when the platform has no
+/// camera backend.
 class CameraCard extends StatefulWidget {
   /// Creates the camera card for [controller].
   const CameraCard({super.key, required this.controller});
@@ -39,17 +41,31 @@ class _CameraCardState extends State<CameraCard> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colors = theme.colorScheme;
 
     if (!widget.controller.cameraSupported) {
       return SectionCard(
+        variant: SectionCardVariant.outlined,
         title: 'Camera',
-        subtitle: 'Not available on this platform',
-        child: Text(
-          'Camera scanning is provided by `mobile_scanner` on Android, iOS, '
-          'macOS and the web. On other platforms, copy a frame payload from the '
-          'send page and add it with the manual input below - the receiving '
-          'stack is identical.',
-          style: theme.textTheme.bodySmall,
+        subtitle: 'No camera backend on this platform',
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.no_photography_outlined, color: colors.onSurfaceVariant),
+            const SizedBox(width: M3Spacing.medium),
+            Expanded(
+              child: Text(
+                'Live camera scanning comes from `mobile_scanner`, which ships '
+                'backends for Android, iOS, macOS and the web only. On Linux '
+                'and Windows, use *Scan from image* below: it decodes a '
+                'screenshot, a photo, or the animated GIF exported by the send '
+                'page with the same fountain decoder.',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colors.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ],
         ),
       );
     }
@@ -63,7 +79,8 @@ class _CameraCardState extends State<CameraCard> {
         tooltip: 'Switch camera',
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
+        // Shape token keeps the preview clipped like every other container.
+        borderRadius: M3Shape.cardRadius,
         child: AspectRatio(
           aspectRatio: 1,
           child: MobileScanner(
@@ -75,10 +92,10 @@ class _CameraCardState extends State<CameraCard> {
               }
             },
             errorBuilder: (context, error) => ColoredBox(
-              color: theme.colorScheme.surfaceContainerHighest,
+              color: colors.surfaceContainerHighest,
               child: Center(
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(M3Spacing.large),
                   child: Text(
                     'Camera unavailable: ${error.errorCode.name}\n'
                     '${error.errorDetails?.message ?? ''}',

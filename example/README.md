@@ -4,6 +4,9 @@ All-platform verification app for [`qrs_dart`](../). It pairs both halves of the
 protocol so a transfer can be checked on a single device, or against the
 [official web app](https://qrss.netlify.app/).
 
+## AI Disclaimer
+The exmaple app is completed by DeepSeek V4.1 Flash with harness, which targets to be re-implement the official qrs web's feature and follows Material Design. I've checked briefly and it works well, but I cannot guarantee that it is 100% correct. Just treat it as a example. If you find any issue, please report it to the issue tracker!
+
 ## Pages
 
 - **Send** — choose a file or send a text snippet. Frames stream at the chosen

@@ -3,7 +3,12 @@ import 'package:material_ui/material_ui.dart';
 /// Draws a QR module matrix as crisp, integer-sized squares.
 ///
 /// The stream is generated for a camera, so the modules must not be
-/// anti-aliased and the quiet zone must stay white.
+/// anti-aliased and the quiet zone must stay white. This widget is therefore
+/// deliberately exempt from the MD3 colour tokens: a QR code only scans with
+/// maximum luminance contrast, so it stays black on white in both themes. The
+/// MD3 shape tokens are applied by the callers to the container *around* it.
+/// Callers should wrap it in a [Semantics] node, because the matrix itself
+/// carries no text.
 class QrMatrixView extends StatelessWidget {
   /// Creates a view for [matrix] (`true` = dark module).
   const QrMatrixView({

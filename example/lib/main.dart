@@ -1,7 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import 'src/app_shell.dart';
-import 'src/theme.dart';
+import 'src/design/theme.dart';
 
 void main() {
   runApp(const QrsExampleApp());

@@ -9,10 +9,19 @@ import 'package:signals/signals.dart';
 /// Scanner URL prefix used by the official Qrs web app.
 const String defaultScannerPrefix = 'https://qrss.netlify.app/#';
 
+/// Lowest frame rate the send page allows.
+const int minFps = 1;
+
+/// Highest frame rate the send page allows.
+const int maxFps = 60;
+
+/// Frame rate the send page starts with.
+const int defaultFps = 20;
+
 /// Drives the *Send* page.
 ///
 /// It owns a [SendSession] and a frame timer, and exposes everything the UI
-/// needs as signals, following Yukari's state convention.
+/// needs as signals.
 class SendController {
   /// Payload being transmitted, metadata included.
   final data = signal<Uint8List?>(null);
@@ -27,7 +36,7 @@ class SendController {
   final sliceSize = signal<int>(1000);
 
   /// Frames rendered per second.
-  final fps = signal<int>(20);
+  final fps = signal<int>(defaultFps);
 
   /// Whether a scanner URL prefix is prepended to every frame.
   final usePrefix = signal<bool>(true);
@@ -58,6 +67,11 @@ class SendController {
 
   /// Payload size in bytes after compression.
   int get payloadBytes => _session?.payloadBytes ?? 0;
+
+  /// Time between two frames at the current [fps].
+  Duration get frameInterval => Duration(
+    microseconds: (Duration.microsecondsPerSecond / fps.value).round(),
+  );
 
   /// The fully built frame string of the current frame.
   String get currentPayload => frame.value?.payload ?? '';
@@ -125,6 +139,18 @@ class SendController {
     _rebuild();
   }
 
+  /// Applies a new frame rate.
+  ///
+  /// The frame interval is baked into the running [Timer.periodic], so the timer
+  /// is re-armed here: a speed change is audible immediately instead of only
+  /// after the next stop/start cycle.
+  void updateFps(int value) {
+    final clamped = value.clamp(minFps, maxFps);
+    if (clamped == fps.value) return;
+    fps.value = clamped;
+    if (isPlaying.value) _armTimer();
+  }
+
   /// Renders the next fountain frame.
   void nextFrame() {
     final session = _session;
@@ -146,11 +172,13 @@ class SendController {
   void start() {
     if (_session == null || isPlaying.value) return;
     isPlaying.value = true;
+    _armTimer();
+  }
+
+  /// (Re)creates the frame timer with the current [fps].
+  void _armTimer() {
     _timer?.cancel();
-    _timer = Timer.periodic(
-      Duration(microseconds: (1000000 / fps.value).round()),
-      (_) => nextFrame(),
-    );
+    _timer = Timer.periodic(frameInterval, (_) => nextFrame());
   }
 
   /// Stops streaming frames.

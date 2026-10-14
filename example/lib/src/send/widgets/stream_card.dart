@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
+import '../../design/tokens.dart';
 import '../../qr_matrix_view.dart';
 import '../../widgets/section_card.dart';
 import '../send_controller.dart';
@@ -16,10 +17,13 @@ class StreamCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final textTheme = theme.textTheme;
 
     return SignalBuilder(
       builder: (context) {
         final frame = controller.frame.value;
+        final playing = controller.isPlaying.value;
 
         return SectionCard(
           title: 'Live stream',
@@ -32,10 +36,21 @@ class StreamCard extends StatelessWidget {
             onPressed: controller.blockCount == 0
                 ? null
                 : controller.togglePlay,
-            icon: Icon(
-              controller.isPlaying.value ? Icons.pause : Icons.play_arrow,
+            // Motion: the icon cross-fades on the standard enter/exit pair.
+            icon: AnimatedSwitcher(
+              duration: M3Motion.short3,
+              switchInCurve: M3Motion.standardDecelerate,
+              switchOutCurve: M3Motion.standardAccelerate,
+              transitionBuilder: (child, animation) => ScaleTransition(
+                scale: animation,
+                child: FadeTransition(opacity: animation, child: child),
+              ),
+              child: Icon(
+                playing ? Icons.pause : Icons.play_arrow,
+                key: ValueKey<bool>(playing),
+              ),
             ),
-            tooltip: controller.isPlaying.value ? 'Pause' : 'Play',
+            tooltip: playing ? 'Pause' : 'Play',
           ),
           child: Column(
             children: [
@@ -44,55 +59,74 @@ class StreamCard extends StatelessWidget {
                   maxWidth: 420,
                   maxHeight: 420,
                 ),
-                child: frame == null
-                    ? AspectRatio(
-                        aspectRatio: 1,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.surfaceContainerHighest,
-                            borderRadius: BorderRadius.circular(12),
+                child: AnimatedSwitcher(
+                  duration: M3Motion.short2,
+                  switchInCurve: M3Motion.emphasizedDecelerate,
+                  child: frame == null
+                      ? AspectRatio(
+                          key: const ValueKey<String>('placeholder'),
+                          aspectRatio: 1,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: colors.surfaceContainerHighest,
+                              // Shape token instead of a raw radius.
+                              borderRadius: M3Shape.cardRadius,
+                            ),
+                            child: Center(
+                              child: Icon(
+                                Icons.qr_code_2,
+                                size: 72,
+                                color: colors.onSurfaceVariant,
+                              ),
+                            ),
                           ),
-                          child: const Center(
-                            child: Icon(Icons.qr_code_2, size: 72),
+                        )
+                      : Semantics(
+                          // The matrix itself carries no text, so label it.
+                          label:
+                              'QR code frame ${controller.frameCount.value} '
+                              'of the transfer',
+                          image: true,
+                          child: QrMatrixView(
+                            key: const ValueKey<String>('matrix'),
+                            matrix: frame.qr.data,
                           ),
                         ),
-                      )
-                    : QrMatrixView(matrix: frame.qr.data),
+                ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: M3Spacing.medium),
               Row(
                 children: [
-                  const Icon(Icons.speed, size: 18),
-                  const SizedBox(width: 8),
+                  Icon(Icons.speed, size: 20, color: colors.onSurfaceVariant),
+                  const SizedBox(width: M3Spacing.small),
                   Expanded(
                     child: Slider(
                       value: controller.fps.value.toDouble(),
-                      min: 1,
-                      max: 60,
-                      divisions: 59,
+                      min: minFps.toDouble(),
+                      max: maxFps.toDouble(),
+                      divisions: maxFps - minFps,
                       label: '${controller.fps.value} fps',
-                      onChanged: (value) =>
-                          controller.fps.value = value.round(),
+                      // Re-arms the frame timer, so the new speed applies to the
+                      // very next frame instead of after a stop/start cycle.
+                      onChanged: (value) => controller.updateFps(value.round()),
                     ),
                   ),
-                  SizedBox(
-                    width: 64,
-                    child: Text(
-                      '${controller.fps.value} fps',
-                      textAlign: TextAlign.end,
-                      style: theme.textTheme.labelMedium,
-                    ),
+                  const SizedBox(width: M3Spacing.small),
+                  Text(
+                    '${controller.fps.value} fps',
+                    style: textTheme.labelLarge,
+                    maxLines: 1,
                   ),
                 ],
               ),
               if (frame != null) ...[
-                const SizedBox(height: 4),
+                const SizedBox(height: M3Spacing.extraSmall),
                 SelectableText(
                   frame.payload,
                   maxLines: 2,
-                  style: theme.textTheme.bodySmall?.copyWith(
+                  style: textTheme.bodySmall?.copyWith(
                     fontFamily: 'monospace',
-                    color: theme.colorScheme.onSurfaceVariant,
+                    color: colors.onSurfaceVariant,
                   ),
                 ),
               ],

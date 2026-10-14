@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
+import '../../design/tokens.dart';
 import '../../widgets/section_card.dart';
 import '../send_controller.dart';
 
@@ -17,16 +18,14 @@ class SourceCard extends StatelessWidget {
     final text = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Send text'),
+        title: const Text('Compose text'),
         content: TextField(
           controller: textController,
           autofocus: true,
           maxLines: 6,
           minLines: 3,
-          decoration: const InputDecoration(
-            border: OutlineInputBorder(),
-            labelText: 'Text to send',
-          ),
+          textInputAction: TextInputAction.newline,
+          decoration: const InputDecoration(labelText: 'Text to send'),
         ),
         actions: [
           TextButton(
@@ -40,6 +39,7 @@ class SourceCard extends StatelessWidget {
         ],
       ),
     );
+    textController.dispose();
 
     if (text != null && text.isNotEmpty) {
       controller.loadText(text);
@@ -49,22 +49,25 @@ class SourceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return SignalBuilder(
       builder: (context) {
-        final hasData = controller.data.value != null;
+        final data = controller.data.value;
 
         return SectionCard(
           title: 'Payload',
-          subtitle: hasData
-              ? '${controller.filename.value ?? 'unnamed'} · '
-                    '${controller.data.value!.length} bytes'
+          subtitle: data != null
+              ? '${controller.filename.value ?? 'unnamed'} · ${data.length} bytes'
               : 'Choose a file or send a short text',
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // Wrap instead of Row: the actions reflow onto a second line in
+              // narrow windows or at large text scales.
               Wrap(
-                spacing: 8,
-                runSpacing: 8,
+                spacing: M3Spacing.small,
+                runSpacing: M3Spacing.small,
                 children: [
                   FilledButton.icon(
                     onPressed: () async {
@@ -81,13 +84,29 @@ class SourceCard extends StatelessWidget {
                   ),
                 ],
               ),
-              if (controller.error.value != null) ...[
-                const SizedBox(height: 8),
-                Text(
-                  controller.error.value!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+              if (controller.error.value != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: M3Spacing.medium),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        Icons.error_outline,
+                        size: 20,
+                        color: theme.colorScheme.error,
+                      ),
+                      const SizedBox(width: M3Spacing.small),
+                      Expanded(
+                        child: Text(
+                          controller.error.value!,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.error,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ],
             ],
           ),
         );

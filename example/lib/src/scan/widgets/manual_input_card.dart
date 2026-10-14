@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:qrs_dart/qrs_dart.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
+import '../../design/tokens.dart';
 import '../../widgets/section_card.dart';
 import '../scan_controller.dart';
 
@@ -49,8 +50,12 @@ class _ManualInputCardState extends State<ManualInputCard> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
     return SignalBuilder(
       builder: (context) => SectionCard(
+        variant: SectionCardVariant.outlined,
         title: 'Manual frame input',
         subtitle: 'Paste one frame payload per line',
         child: Column(
@@ -60,42 +65,50 @@ class _ManualInputCardState extends State<ManualInputCard> {
               controller: _input,
               maxLines: 3,
               minLines: 2,
-              style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontFamily: 'monospace',
+              ),
               decoration: const InputDecoration(
                 labelText: 'Frame payload',
-                border: OutlineInputBorder(),
-                isDense: true,
+                alignLabelWithHint: true,
               ),
               onSubmitted: (_) => _submit(),
             ),
-            const SizedBox(height: 8),
-            Row(
+            const SizedBox(height: M3Spacing.medium),
+            Wrap(
+              spacing: M3Spacing.small,
+              runSpacing: M3Spacing.small,
               children: [
                 FilledButton.icon(
                   onPressed: _submit,
                   icon: const Icon(Icons.add),
                   label: const Text('Add frame'),
                 ),
-                const SizedBox(width: 8),
-                TextButton(
+                TextButton.icon(
                   onPressed: () {
                     _input.clear();
                     widget.controller.reset();
                     setState(() => _feedback = null);
                   },
-                  child: const Text('Reset'),
+                  icon: const Icon(Icons.restart_alt),
+                  label: const Text('Reset'),
                 ),
               ],
             ),
             if (_feedback != null) ...[
-              const SizedBox(height: 4),
-              Text(_feedback!, style: Theme.of(context).textTheme.bodySmall),
+              const SizedBox(height: M3Spacing.small),
+              Semantics(
+                liveRegion: true,
+                child: Text(_feedback!, style: theme.textTheme.bodySmall),
+              ),
             ],
-            if (widget.controller.error.value != null)
+            if (widget.controller.error.value != null) ...[
+              const SizedBox(height: M3Spacing.small),
               Text(
                 widget.controller.error.value!,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
+                style: theme.textTheme.bodySmall?.copyWith(color: colors.error),
               ),
+            ],
           ],
         ),
       ),

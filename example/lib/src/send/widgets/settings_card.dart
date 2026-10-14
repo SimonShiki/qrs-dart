@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
+import '../../design/tokens.dart';
 import '../../widgets/section_card.dart';
 import '../send_controller.dart';
 
@@ -40,8 +41,13 @@ class _SettingsCardState extends State<SettingsCard> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return SignalBuilder(
       builder: (context) => SectionCard(
+        // Outlined variant: settings are a recessive surface next to the
+        // filled payload and stream cards.
+        variant: SectionCardVariant.outlined,
         title: 'Transmission',
         subtitle: 'Smaller blocks mean more frames but scan more reliably',
         child: Column(
@@ -50,15 +56,20 @@ class _SettingsCardState extends State<SettingsCard> {
             TextField(
               controller: _sliceSize,
               keyboardType: TextInputType.number,
+              textInputAction: TextInputAction.done,
               decoration: const InputDecoration(
                 labelText: 'Block size (bytes)',
                 helperText: '1 - 10000, default 1000',
-                border: OutlineInputBorder(),
-                isDense: true,
               ),
+              // Committing on focus loss as well as on Enter means the setting
+              // never silently keeps an edited-but-unsubmitted value.
               onSubmitted: _submitSliceSize,
+              onTapOutside: (_) {
+                FocusManager.instance.primaryFocus?.unfocus();
+                _submitSliceSize(_sliceSize.text);
+              },
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: M3Spacing.medium),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               value: widget.controller.usePrefix.value,
@@ -68,16 +79,37 @@ class _SettingsCardState extends State<SettingsCard> {
                 'Lets the official web scanner open the payload directly',
               ),
             ),
-            if (widget.controller.usePrefix.value)
+            if (widget.controller.usePrefix.value) ...[
+              const SizedBox(height: M3Spacing.small),
               TextField(
                 controller: _prefix,
                 decoration: const InputDecoration(
                   labelText: 'Prefix',
-                  border: OutlineInputBorder(),
-                  isDense: true,
+                  helperText: 'Prepended to every frame',
                 ),
                 onChanged: (value) => widget.controller.prefix.value = value,
               ),
+            ],
+            const SizedBox(height: M3Spacing.medium),
+            Row(
+              children: [
+                Icon(
+                  Icons.info_outline,
+                  size: 18,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: M3Spacing.small),
+                Expanded(
+                  child: Text(
+                    'Changing the block size rebuilds the transfer from the '
+                    'next frame on.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),
