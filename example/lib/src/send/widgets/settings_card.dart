@@ -53,13 +53,39 @@ class _SettingsCardState extends State<SettingsCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Wrap(
+              spacing: M3Spacing.small,
+              runSpacing: M3Spacing.small,
+              children: [
+                for (final preset in slicePresets)
+                  ChoiceChip(
+                    label: Text('${preset.label} · ${preset.sliceSize} B'),
+                    selected:
+                        widget.controller.sliceSize.value == preset.sliceSize,
+                    onSelected: (_) {
+                      widget.controller.applySlicePreset(preset);
+                      _sliceSize.text = '${widget.controller.sliceSize.value}';
+                    },
+                  ),
+              ],
+            ),
+            const SizedBox(height: M3Spacing.small),
+            Text(
+              slicePresets
+                  .map((preset) => '${preset.label}: ${preset.detail}')
+                  .join('\n'),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: M3Spacing.medium),
             TextField(
               controller: _sliceSize,
               keyboardType: TextInputType.number,
               textInputAction: TextInputAction.done,
               decoration: const InputDecoration(
                 labelText: 'Block size (bytes)',
-                helperText: '1 - 10000, default 1000',
+                helperText: '1 - 10000, default 1000 · advanced',
               ),
               // Committing on focus loss as well as on Enter means the setting
               // never silently keeps an edited-but-unsubmitted value.
@@ -68,6 +94,16 @@ class _SettingsCardState extends State<SettingsCard> {
                 FocusManager.instance.primaryFocus?.unfocus();
                 _submitSliceSize(_sliceSize.text);
               },
+            ),
+            const SizedBox(height: M3Spacing.medium),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: widget.controller.compress.value,
+              onChanged: widget.controller.updateCompress,
+              title: const Text('Compress payload'),
+              subtitle: const Text(
+                'Turn off for already compressed files (JPEG, ZIP, MP4, ...)',
+              ),
             ),
             const SizedBox(height: M3Spacing.medium),
             SwitchListTile(

@@ -1,14 +1,9 @@
+import 'dart:typed_data';
+import 'dart:ui' as ui;
+
 import 'package:material_ui/material_ui.dart';
 
 /// Draws a QR module matrix as crisp, integer-sized squares.
-///
-/// The stream is generated for a camera, so the modules must not be
-/// anti-aliased and the quiet zone must stay white. This widget is therefore
-/// deliberately exempt from the MD3 colour tokens: a QR code only scans with
-/// maximum luminance contrast, so it stays black on white in both themes. The
-/// MD3 shape tokens are applied by the callers to the container *around* it.
-/// Callers should wrap it in a [Semantics] node, because the matrix itself
-/// carries no text.
 class QrMatrixView extends StatelessWidget {
   /// Creates a view for [matrix] (`true` = dark module).
   const QrMatrixView({
@@ -52,8 +47,11 @@ class QrMatrixView extends StatelessWidget {
           child: CustomPaint(
             painter: _QrMatrixPainter(
               matrix: matrix,
-              moduleSize: moduleSize,
-              quietZone: quietZone,
+              modules: _buildModuleVertices(
+                matrix,
+                moduleSize,
+                quietZone * moduleSize,
+              ),
               foreground: foreground,
               background: background,
             ),
@@ -69,18 +67,91 @@ class QrMatrixView extends StatelessWidget {
   }
 }
 
+/// Packs every horizontal run of dark modules into one quad (two triangles),
+/// so the whole code becomes one [ui.Vertices] buffer.
+///
+/// Coordinates are `offset + n * moduleSize`, and the caller guarantees integer
+/// logical pixels for both, so module edges land exactly on pixel boundaries
+/// and stay crisp. Returns `null` for an all-white matrix, which needs no
+/// vertex draw at all.
+ui.Vertices? _buildModuleVertices(
+  List<List<bool>> matrix,
+  double moduleSize,
+  double offset,
+) {
+  // Count the dark runs first so the buffer can be allocated exactly once:
+  // no growth, no per-frame garbage beyond the buffer itself.
+  var runs = 0;
+  for (final row in matrix) {
+    for (var x = 0; x < row.length;) {
+      if (!row[x]) {
+        x += 1;
+        continue;
+      }
+      runs += 1;
+      while (x < row.length && row[x]) {
+        x += 1;
+      }
+    }
+  }
+  if (runs == 0) return null;
+
+  // Six vertices (two triangles) per run, two floats per vertex.
+  final positions = Float32List(runs * 12);
+  var i = 0;
+  for (var y = 0; y < matrix.length; y++) {
+    final row = matrix[y];
+    final top = offset + y * moduleSize;
+    final bottom = top + moduleSize;
+
+    for (var x = 0; x < row.length;) {
+      if (!row[x]) {
+        x += 1;
+        continue;
+      }
+      var end = x + 1;
+      while (end < row.length && row[end]) {
+        end += 1;
+      }
+
+      final left = offset + x * moduleSize;
+      final right = offset + end * moduleSize;
+
+      // Top-left, top-right, bottom-right / top-left, bottom-right, bottom-left.
+      positions[i++] = left;
+      positions[i++] = top;
+      positions[i++] = right;
+      positions[i++] = top;
+      positions[i++] = right;
+      positions[i++] = bottom;
+
+      positions[i++] = left;
+      positions[i++] = top;
+      positions[i++] = right;
+      positions[i++] = bottom;
+      positions[i++] = left;
+      positions[i++] = bottom;
+
+      x = end;
+    }
+  }
+
+  return ui.Vertices.raw(ui.VertexMode.triangles, positions);
+}
+
 class _QrMatrixPainter extends CustomPainter {
   const _QrMatrixPainter({
     required this.matrix,
-    required this.moduleSize,
-    required this.quietZone,
+    required this.modules,
     required this.foreground,
     required this.background,
   });
 
   final List<List<bool>> matrix;
-  final double moduleSize;
-  final int quietZone;
+
+  /// The dark modules as one vertex buffer, or `null` when there are none.
+  final ui.Vertices? modules;
+
   final Color foreground;
   final Color background;
 
@@ -88,32 +159,23 @@ class _QrMatrixPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     canvas.drawRect(Offset.zero & size, Paint()..color = background);
 
-    final paint = Paint()
-      ..color = foreground
-      ..isAntiAlias = false;
-    final offset = quietZone * moduleSize;
+    final modules = this.modules;
+    if (modules == null) return;
 
-    for (var y = 0; y < matrix.length; y++) {
-      final row = matrix[y];
-      for (var x = 0; x < row.length; x++) {
-        if (!row[x]) continue;
-        canvas.drawRect(
-          Rect.fromLTWH(
-            offset + x * moduleSize,
-            offset + y * moduleSize,
-            moduleSize,
-            moduleSize,
-          ),
-          paint,
-        );
-      }
-    }
+    // `Paint.color` is the colour of the triangles when the vertices carry no
+    // per-vertex colours; without those the blend mode is unused as well.
+    canvas.drawVertices(
+      modules,
+      ui.BlendMode.srcOver,
+      Paint()
+        ..color = foreground
+        ..isAntiAlias = false,
+    );
   }
 
   @override
   bool shouldRepaint(_QrMatrixPainter oldDelegate) =>
       oldDelegate.matrix != matrix ||
-      oldDelegate.moduleSize != moduleSize ||
       oldDelegate.foreground != foreground ||
       oldDelegate.background != background;
 }

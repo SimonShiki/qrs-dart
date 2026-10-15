@@ -140,6 +140,14 @@ class _GifExportCardState extends State<GifExportCard> {
                   ? null
                   : (value) => setState(() => _gifFps = value.round()),
             ),
+            Text(
+              'GIF is a recording medium: browsers rewrite frame delays of '
+              '10 ms or less to 100 ms, so playback above 50 fps is silently '
+              'slowed down. Use the live stream for real-time transfers.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
             Text('GIF width (px)', style: theme.textTheme.labelLarge),
             const SizedBox(height: M3Spacing.small),
             Align(

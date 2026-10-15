@@ -181,10 +181,14 @@ class LtDecoder {
   /// Reassembles the original data, or returns null while still incomplete.
   ///
   /// The payload is reassembled from [decodedData], truncated to the byte count
-  /// recorded in [meta]. It is then inflated and verified against the checksum;
-  /// if inflation fails, the raw payload is verified instead. Throws a
-  /// [StateError] when neither candidate matches the checksum.
-  Uint8List? getDecoded() {
+  /// recorded in [meta]. It is then verified against the checksum, trying the
+  /// [codec]-decompressed form first and the raw payload second: a sender that
+  /// skipped compression stores raw bytes, and the wire format does not say
+  /// which of the two happened. [codec] is the decompressor the sender used and
+  /// only needs to be passed for custom codecs — the default zlib stream and
+  /// the raw payload are told apart by trying both. Throws a [StateError] when
+  /// neither candidate matches the checksum.
+  Uint8List? getDecoded({PayloadCodec codec = PayloadCodec.zlib}) {
     final meta = this.meta;
     if (meta == null || decodedCount != meta.k) {
       return null;
@@ -209,17 +213,22 @@ class LtDecoder {
       }
     }
 
+    // A receiver cannot tell a compressed transfer from a raw one on the wire,
+    // so both candidates are tried: the sender's codec first (the payload is
+    // only stored as-is when the sender skipped compression), then the raw
+    // payload.
+    Uint8List? decompressed;
     try {
-      final decompressed = inflate(merged);
-      final checksum = getChecksum(decompressed, meta.k);
-      if (checksum == meta.checksum) {
-        return decompressed;
-      }
-    } catch (_) {
-      final checksum = getChecksum(merged, meta.k);
-      if (checksum == meta.checksum) {
-        return merged;
-      }
+      decompressed = codec.decode(merged);
+    } on Object {
+      decompressed = null;
+    }
+    if (decompressed != null &&
+        getChecksum(decompressed, meta.k) == meta.checksum) {
+      return decompressed;
+    }
+    if (getChecksum(merged, meta.k) == meta.checksum) {
+      return merged;
     }
 
     throw StateError('Checksum mismatch');

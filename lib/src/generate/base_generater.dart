@@ -38,6 +38,8 @@ Generater<Result> createGeneraterWithRender<
     data,
     options.sliceSize,
     compress: options.compress,
+    codec: options.codec,
+    sampler: options.sampler,
   );
   return Generater._(encoder, (block) => render(block, options));
 }

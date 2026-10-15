@@ -2,21 +2,39 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'checksum.dart';
+import 'degree.dart';
 import 'shared.dart';
 import 'zlib.dart';
 
 /// Creates an [LtEncoder] for [data], split into blocks of [sliceSize] bytes.
 ///
-/// When [compress] is true (the default) the data is deflated first and the
-/// checksum is taken over the uncompressed data. [random] can be injected to
-/// make the degree/index selection deterministic; it defaults to [Random].
+/// When [compress] is true (the default) the data is passed through [codec]
+/// first and the checksum is taken over the uncompressed data. Whether to
+/// compress at all, and with what, is the caller's decision: the library never
+/// inspects the payload. An already-compressed file (JPEG, ZIP, MP4, ...) is
+/// best sent with `compress: false`, and a receiver decodes both forms — it
+/// tries the codec and falls back to the raw payload.
+///
+/// [random] can be injected to make the degree/index selection deterministic;
+/// it defaults to [Random]. [sampler] picks the block degree distribution and
+/// defaults to [DegreeSampler.ideal], the distribution of the reference
+/// implementation; pass [DegreeSampler.robust] for fewer frames per transfer.
 LtEncoder createEncoder(
   Uint8List data,
   int sliceSize, {
   bool compress = true,
+  PayloadCodec codec = PayloadCodec.zlib,
   Random? random,
+  DegreeSamplerFactory sampler = DegreeSampler.ideal,
 }) {
-  return LtEncoder(data, sliceSize, compress: compress, random: random);
+  return LtEncoder(
+    data,
+    sliceSize,
+    compress: compress,
+    codec: codec,
+    random: random,
+    sampler: sampler,
+  );
 }
 
 /// Encodes data into an endless stream of Luby-transform blocks.
@@ -26,15 +44,19 @@ class LtEncoder {
     Uint8List data,
     int sliceSize, {
     bool compress = true,
+    PayloadCodec codec = PayloadCodec.zlib,
     Random? random,
+    DegreeSamplerFactory sampler = DegreeSampler.ideal,
   }) {
-    final compressed = compress ? deflate(data) : data;
+    final compressed = compress ? codec.encode(data) : data;
     final indices = _sliceData(compressed, sliceSize);
     return LtEncoder._(
       data,
       sliceSize,
       compress,
+      codec,
       random ?? Random(),
+      sampler,
       compressed,
       indices,
       indices.length,
@@ -46,12 +68,15 @@ class LtEncoder {
     this.data,
     this.sliceSize,
     this.compress,
+    this.codec,
     this._random,
+    DegreeSamplerFactory sampler,
     this.compressed,
     this.indices,
     this.k,
     this.checksum,
-  ) : bytes = compressed.length;
+  ) : bytes = compressed.length,
+      _sampler = sampler(k);
 
   /// The original, uncompressed payload.
   final Uint8List data;
@@ -59,8 +84,11 @@ class LtEncoder {
   /// The number of bytes in every generated block.
   final int sliceSize;
 
-  /// Whether [data] is deflated before slicing.
+  /// Whether [data] is compressed with [codec] before slicing.
   final bool compress;
+
+  /// The codec used to compress [data] before slicing.
+  final PayloadCodec codec;
 
   /// Number of original data blocks.
   final int k;
@@ -78,15 +106,13 @@ class LtEncoder {
   final Uint8List compressed;
 
   final Random _random;
+  final DegreeSampler _sampler;
 
   /// XORs the selected [indices] into a fresh block.
   EncodedBlock createBlock(List<int> indices) {
     final data = Uint8List(sliceSize);
     for (final index in indices) {
-      final indicesIndex = this.indices[index];
-      for (var i = 0; i < sliceSize; i++) {
-        data[i] = data[i] ^ indicesIndex[i];
-      }
+      xorInto(data, this.indices[index]);
     }
 
     return EncodedBlock(
@@ -118,7 +144,7 @@ class FountainIterator implements Iterator<EncodedBlock> {
 
   @override
   bool moveNext() {
-    final degree = _getRandomDegree(_encoder._random, _encoder.k);
+    final degree = _encoder._sampler.nextDegree(_encoder._random);
     final selectedIndices = _getRandomIndices(
       _encoder._random,
       _encoder.k,
@@ -150,35 +176,10 @@ List<Uint8List> _sliceData(Uint8List data, int blockSize) {
   return blocks;
 }
 
-/// Uses the Ideal Soliton Distribution to select a block degree.
-int _getRandomDegree(Random random, int k) {
-  final probabilities = List<double>.filled(k, 0);
-
-  // Calculate the probabilities of the Ideal Soliton Distribution
-  probabilities[0] = 1 / k; // P(1) = 1/k
-  for (var d = 2; d <= k; d++) {
-    probabilities[d - 1] = 1 / (d * (d - 1));
-  }
-
-  // Accumulate the probabilities to generate the cumulative distribution
-  final cumulativeProbabilities = List<double>.filled(k, 0);
-  for (var i = 0; i < k; i++) {
-    cumulativeProbabilities[i] =
-        probabilities[i] + (i > 0 ? cumulativeProbabilities[i - 1] : 0);
-  }
-
-  // Pick a random number in [0,1) and select the corresponding degree
-  final randomValue = random.nextDouble();
-  for (var i = 0; i < cumulativeProbabilities.length; i++) {
-    if (randomValue < cumulativeProbabilities[i]) {
-      return i + 1;
-    }
-  }
-
-  return k; // Theoretically, this line should never be reached
-}
-
 /// Randomly selects [degree] distinct original block indices.
+///
+/// Matches the reference implementation draw for draw (one `nextDouble()` per
+/// attempt), so seeded and scripted randoms reproduce the same frames.
 List<int> _getRandomIndices(Random random, int k, int degree) {
   final indices = <int>{};
   while (indices.length < degree) {

@@ -34,13 +34,47 @@ class SendFrame {
 /// and keeps counters for the sender UI.
 class SendSession {
   /// Starts a session for an already prepared [data] payload.
+  ///
+  /// [sampler] picks the block degree distribution and defaults to
+  /// [DegreeSampler.robust]: it bounds the worst-case index header (the
+  /// reference ideal soliton occasionally emits a frame with hundreds of
+  /// indices and a header bigger than its payload, which upstream even fails
+  /// to render) at no measurable cost in frames. The wire format does not
+  /// encode the distribution, so any receiver decodes either; see
+  /// `dart run tool/benchmark` for the numbers.
+  ///
+  /// [maskPattern] controls the QR mask:
+  ///
+  /// * `null` (the default) scores all eight masks once, on the first frame,
+  ///   and reuses the winner for the rest of the transfer. Mask scoring costs
+  ///   eight O(size^2) passes per frame; every frame carries statistically
+  ///   similar random payload, so scoring per frame buys nothing.
+  /// * `0..7` pins one mask for every frame (fastest generation, choose the
+  ///   value after measuring it on your display/camera pair).
+  /// * `-1` scores all eight masks per frame, exactly like the reference
+  ///   implementation.
+  ///
+  /// [compress] and [codec] decide how the payload is prepared before slicing;
+  /// the library never guesses: already-compressed files are best sent with
+  /// `compress: false`, and a receiver decodes either form.
   SendSession(
     this.data, {
     this.sliceSize = 1000,
     this.prefix = '',
-    this.border = 5,
+    this.border = 4,
+    this.maskPattern,
+    bool compress = true,
+    PayloadCodec codec = PayloadCodec.zlib,
     Random? random,
-  }) : encoder = createEncoder(data, sliceSize, random: random) {
+    DegreeSamplerFactory sampler = DegreeSampler.robust,
+  }) : encoder = createEncoder(
+         data,
+         sliceSize,
+         compress: compress,
+         codec: codec,
+         random: random,
+         sampler: sampler,
+       ) {
     _fountain = encoder.fountain();
   }
 
@@ -51,8 +85,12 @@ class SendSession {
     String? contentType,
     int sliceSize = 1000,
     String prefix = '',
-    int border = 5,
+    int border = 4,
+    int? maskPattern,
+    bool compress = true,
+    PayloadCodec codec = PayloadCodec.zlib,
     Random? random,
+    DegreeSamplerFactory sampler = DegreeSampler.robust,
   }) {
     return SendSession(
       appendFileHeaderMetaToBuffer(
@@ -67,7 +105,11 @@ class SendSession {
       sliceSize: sliceSize,
       prefix: prefix,
       border: border,
+      maskPattern: maskPattern,
+      compress: compress,
+      codec: codec,
       random: random,
+      sampler: sampler,
     );
   }
 
@@ -85,7 +127,14 @@ class SendSession {
   String prefix;
 
   /// Quiet-zone border used when generating QR codes.
+  ///
+  /// ISO/IEC 18004 asks for a four-module quiet zone; anything smaller risks
+  /// the finder patterns being cut off by the camera framing.
   final int border;
+
+  /// The QR mask pattern to use; see the constructor for the `null` / `0..7` /
+  /// `-1` semantics.
+  final int? maskPattern;
 
   /// The underlying fountain encoder.
   final LtEncoder encoder;
@@ -93,6 +142,7 @@ class SendSession {
   late final FountainIterator _fountain;
 
   var _frameCount = 0;
+  int? _resolvedMask;
 
   /// Number of QR frames produced so far.
   int get frameCount => _frameCount;
@@ -109,11 +159,18 @@ class SendSession {
     final block = _fountain.current;
     final payload = addUrlPrefix(prefix, blockToBase64(block));
     _frameCount++;
-    return SendFrame(
-      block: block,
-      payload: payload,
-      qr: encode(payload, options: QrCodeGenerateOptions(border: border)),
+
+    final configured = maskPattern;
+    final qr = encode(
+      payload,
+      options: QrCodeGenerateOptions(
+        border: border,
+        maskPattern: configured ?? _resolvedMask ?? -1,
+      ),
     );
+    _resolvedMask ??= qr.maskPattern;
+
+    return SendFrame(block: block, payload: payload, qr: qr);
   }
 
   /// Restarts the frame counter without touching the fountain.

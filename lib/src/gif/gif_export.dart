@@ -16,6 +16,9 @@ class GifExportOptions {
     this.fps = 10,
     this.size = 512,
     this.prefix = '',
+    this.compress = true,
+    this.codec = PayloadCodec.zlib,
+    this.sampler = DegreeSampler.robust,
     this.isAborted,
     this.onProgress,
     this.yieldToEventLoop,
@@ -39,6 +42,18 @@ class GifExportOptions {
 
   /// Prefix prepended to every payload, e.g. `https://host/#`.
   final String prefix;
+
+  /// Whether the payload is compressed with [codec] before it is sliced.
+  ///
+  /// Whether (and how) to compress is the caller's decision: an already
+  /// compressed file is best exported with `compress: false`.
+  final bool compress;
+
+  /// The codec used to compress the payload before slicing.
+  final PayloadCodec codec;
+
+  /// The block degree distribution; see `SendSession` for the trade-offs.
+  final DegreeSamplerFactory sampler;
 
   /// Polled before every frame; returning `true` cancels the export.
   final bool Function()? isAborted;
@@ -68,6 +83,9 @@ Future<Uint8List?> encodeGif(GifExportOptions options) async {
   final encoder = createEncoder(
     options.data,
     options.sliceSize,
+    compress: options.compress,
+    codec: options.codec,
+    sampler: options.sampler,
     random: options.random,
   );
   final decoder = createDecoder();
@@ -79,7 +97,9 @@ Future<Uint8List?> encodeGif(GifExportOptions options) async {
   final delay = (1000 / fps).round();
   final writer = GifWriter(
     size: options.size,
-    delayCentiseconds: (delay / 10).round().clamp(1, 0xFFFF),
+    // Browsers treat a frame delay of 10 ms or less as 100 ms, so 20 ms (the
+    // GIF unit of 2 centiseconds) is the shortest delay that survives.
+    delayCentiseconds: (delay / 10).round().clamp(2, 0xFFFF),
     repeat: 0,
   );
 
@@ -112,7 +132,7 @@ Future<Uint8List?> encodeGif(GifExportOptions options) async {
   if (options.isAborted?.call() ?? false) return null;
   if (!recovered) throw StateError(_recoveryError);
 
-  final decoded = decoder.getDecoded();
+  final decoded = decoder.getDecoded(codec: options.codec);
   if (decoded == null ||
       decoded.length != options.data.length ||
       !_sameBytes(decoded, options.data)) {

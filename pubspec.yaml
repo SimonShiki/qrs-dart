@@ -2,7 +2,7 @@ name: qrs_dart
 description: >-
   Dart port of Qrs (qifi-dev/qrs): stream arbitrary data through multiple QR
   codes using Luby Transform fountain codes, with uqr-compatible QR rendering.
-version: 0.1.0
+version: 0.2.0
 repository: https://github.com/SimonShiki/qrs-dart
 issue_tracker: https://github.com/SimonShiki/qrs-dart/issues
 

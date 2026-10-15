@@ -26,6 +26,10 @@ class _CameraCardState extends State<CameraCard> {
     super.initState();
     if (widget.controller.cameraSupported) {
       _scanner = MobileScannerController(
+        // ML Kit wants 1280x720 or 1920x1080 input and at least two pixels per
+        // module; 720p keeps the per-frame decode cost low enough to follow a
+        // 15 fps stream, and is raised in the UI's tip when the code is small.
+        cameraResolution: const Size(1280, 720),
         detectionSpeed: DetectionSpeed.noDuplicates,
         formats: const [BarcodeFormat.qrCode],
       );
@@ -72,7 +76,10 @@ class _CameraCardState extends State<CameraCard> {
 
     return SectionCard(
       title: 'Camera',
-      subtitle: 'Point the camera at the animated QR stream',
+      subtitle:
+          'Point the camera at the animated QR stream · keep the screen at '
+          'full brightness, hold 20-30 cm away and let the focus settle: '
+          'motion blur fails a scan long before resolution does',
       trailing: IconButton(
         onPressed: () => _scanner?.switchCamera(),
         icon: const Icon(Icons.cameraswitch_outlined),

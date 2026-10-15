@@ -8,6 +8,7 @@ library;
 export 'binary_meta.dart';
 export 'checksum.dart';
 export 'decoder.dart';
+export 'degree.dart';
 export 'encoder.dart';
 export 'shared.dart';
 export 'zlib.dart';

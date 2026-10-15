@@ -21,7 +21,7 @@ sequence of QR codes using Luby Transform fountain codes.
 
 ```yaml
 dependencies:
-  qrs_dart: ^0.1.0
+  qrs_dart: ^0.2.0
 ```
 
 ```bash
