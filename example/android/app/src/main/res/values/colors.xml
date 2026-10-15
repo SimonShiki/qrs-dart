@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Background layer of the adaptive launcher icon (API 26+). The colour is
+        the app's MD3 seed colour: keep it in sync with `qrsSeedColor` in
+        lib/src/design/theme.dart and `plateColor` in
+        tool/generate_app_icons.dart.
+    -->
+    <color name="ic_launcher_background">#3F51B5</color>
+</resources>

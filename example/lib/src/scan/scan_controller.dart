@@ -1,6 +1,7 @@
-import 'package:flutter/foundation.dart';
 import 'package:qrs_dart/qrs_dart.dart';
 import 'package:signals/signals.dart';
+
+import '../platform/platform_support.dart';
 
 /// Drives the *Scan* page by feeding payloads into a [ReceiveSession].
 class ScanController {
@@ -30,13 +31,10 @@ class ScanController {
 
   /// Total payload bytes seen, including duplicates.
   final bytesReceived = signal<int>(0);
+  QrsPlatformCapabilities get capabilities => QrsPlatformCapabilities.current();
 
   /// Whether this platform can provide a camera to `mobile_scanner`.
-  bool get cameraSupported =>
-      kIsWeb ||
-      defaultTargetPlatform == TargetPlatform.android ||
-      defaultTargetPlatform == TargetPlatform.iOS ||
-      defaultTargetPlatform == TargetPlatform.macOS;
+  bool get cameraSupported => capabilities.liveCameraScan;
 
   /// Feeds one raw QR payload (with or without URL prefix) into the session.
   ScanOutcome addPayload(String? rawValue) {

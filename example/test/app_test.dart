@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:qrs_dart_example/main.dart';
 import 'package:qrs_dart_example/src/design/theme.dart';
 import 'package:qrs_dart_example/src/design/tokens.dart';
+import 'package:qrs_dart_example/src/platform/platform_support.dart';
 import 'package:qrs_dart_example/src/qr_matrix_view.dart';
 import 'package:qrs_dart_example/src/send/send_controller.dart';
 import 'package:qrs_dart_example/src/send/widgets/stream_card.dart';

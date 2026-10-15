@@ -48,10 +48,11 @@ class _CameraCardState extends State<CameraCard> {
     final colors = theme.colorScheme;
 
     if (!widget.controller.cameraSupported) {
+      final capabilities = widget.controller.capabilities;
       return SectionCard(
         variant: SectionCardVariant.outlined,
         title: 'Camera',
-        subtitle: 'No camera backend on this platform',
+        subtitle: 'No camera backend on ${capabilities.platform.label}',
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -59,11 +60,7 @@ class _CameraCardState extends State<CameraCard> {
             const SizedBox(width: M3Spacing.medium),
             Expanded(
               child: Text(
-                'Live camera scanning comes from `mobile_scanner`, which ships '
-                'backends for Android, iOS, macOS and the web only. On Linux '
-                'and Windows, use *Scan from image* below: it decodes a '
-                'screenshot, a photo, or the animated GIF exported by the send '
-                'page with the same fountain decoder.',
+                capabilities.cameraUnavailableHint,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: colors.onSurfaceVariant,
                 ),

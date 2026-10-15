@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "dev.simon" "\0"
-            VALUE "FileDescription", "qrs_dart_example" "\0"
+            VALUE "FileDescription", "QRS Dart" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "qrs_dart_example" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 dev.simon. All rights reserved." "\0"
             VALUE "OriginalFilename", "qrs_dart_example.exe" "\0"
-            VALUE "ProductName", "qrs_dart_example" "\0"
+            VALUE "ProductName", "QRS Dart" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

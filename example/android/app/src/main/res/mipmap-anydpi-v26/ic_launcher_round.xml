@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Round variant of the adaptive launcher icon for launchers that ask for one
+    (`android:roundIcon`). It shares the background and foreground layers with
+    ic_launcher.xml and lets the launcher apply its own circle mask.
+-->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/ic_launcher_background" />
+    <foreground android:drawable="@drawable/ic_launcher_foreground" />
+</adaptive-icon>
