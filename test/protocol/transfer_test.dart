@@ -76,6 +76,32 @@ void main() {
     expect(receiver.result!.meta.filename, 'note.txt');
   });
 
+  test('a Chinese filename survives a full transfer', () {
+    const filename = '衬衫的价格是.txt';
+    final bytes = noisy(1024, 3);
+    final session = SendSession.forFile(
+      bytes,
+      filename: filename,
+      sliceSize: 128,
+    );
+    final receiver = ReceiveSession();
+
+    var frames = 0;
+    ScanOutcome outcome = ScanOutcome.started;
+    while (outcome != ScanOutcome.complete) {
+      frames++;
+      expect(
+        frames,
+        lessThan(session.blockCount * 20),
+        reason: 'the fountain should have completed long before this',
+      );
+      outcome = receiver.addScan(session.next().payload);
+    }
+
+    expect(receiver.result!.data, bytes);
+    expect(receiver.result!.meta.filename, filename);
+  });
+
   test('duplicate frames are ignored', () {
     final session = SendSession.forFile(
       noisy(),

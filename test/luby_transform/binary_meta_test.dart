@@ -150,4 +150,77 @@ void main() {
       expect(uint8ArrayToString(Uint8List(0)), '');
     });
   });
+
+  group('non-ASCII metadata', () {
+    test('round trips a Chinese filename', () {
+      const filename = '衬衫的价格是-ü.txt';
+      final data = Uint8List.fromList([1, 2, 3, 4]);
+      final buffer = appendFileHeaderMetaToBuffer(
+        data,
+        const FileHeaderMeta(filename: filename, contentType: 'text/plain'),
+      );
+
+      final result = readFileHeaderMetaFromBuffer(buffer);
+      expect(result.data, data);
+      expect(result.meta.filename, filename);
+      expect(result.meta.contentType, 'text/plain');
+    });
+
+    test('round trips an emoji, which is a surrogate pair', () {
+      const filename = '📄 发票.txt';
+      final buffer = appendMetaToBuffer(Uint8List(0), {'filename': filename});
+
+      expect(readFileHeaderMetaFromBuffer(buffer).meta.filename, filename);
+    });
+
+    test('writes the metadata chunk as pure ASCII', () {
+      final buffer = appendMetaToBuffer(Uint8List(0), {'filename': '作业.txt'});
+      final metaBuffer = splitUint8Arrays(buffer).first;
+
+      expect(metaBuffer.every((byte) => byte < 0x80), isTrue);
+      expect(
+        uint8ArrayToString(metaBuffer),
+        '{"filename":"\\u4f5c\\u4e1a.txt"}',
+      );
+    });
+
+    test('keeps ASCII-only headers byte-identical to upstream', () {
+      final buffer = appendFileHeaderMetaToBuffer(
+        Uint8List.fromList([9]),
+        const FileHeaderMeta(filename: 'a.txt', contentType: 'text/plain'),
+      );
+
+      expect(
+        uint8ArrayToString(splitUint8Arrays(buffer).first),
+        '{"filename":"a.txt","contentType":"text/plain"}',
+      );
+    });
+
+    test('a lossy legacy header never aborts the transfer', () {
+      final data = Uint8List.fromList([7, 7, 7]);
+      // What a sender without ASCII escaping writes for a non-ASCII name: raw
+      // UTF-16 code units truncated to one byte each. `作` alone becomes `\`,
+      // which is an invalid JSON escape.
+      final legacy = mergeUint8Arrays([
+        stringToUint8Array(
+          jsonEncode({'filename': '作业.txt', 'contentType': 'text/plain'}),
+        ),
+        data,
+      ]);
+
+      final result = readFileHeaderMetaFromBuffer(legacy);
+      expect(result.data, data);
+      expect(result.meta.filename, isNull);
+      expect(result.meta.contentType, 'application/octet-stream');
+    });
+
+    test('readMetaFromBuffer still reports malformed JSON', () {
+      final buffer = mergeUint8Arrays([
+        stringToUint8Array('{"filename":'),
+        Uint8List(0),
+      ]);
+
+      expect(() => readMetaFromBuffer<Object?>(buffer), throwsFormatException);
+    });
+  });
 }

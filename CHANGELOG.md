@@ -1,3 +1,9 @@
+## 0.2.1
+
+### Fixes
+
+- Non-ASCII filenames crashes the receiver.
+
 ## 0.2.0
 
 Performance and stability improvements.
