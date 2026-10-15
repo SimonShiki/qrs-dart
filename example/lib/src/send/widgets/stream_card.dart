@@ -4,6 +4,7 @@ import 'package:signals_flutter/signals_flutter.dart';
 import '../../design/tokens.dart';
 import '../../qr_matrix_view.dart';
 import '../../widgets/section_card.dart';
+import '../../widgets/speed_indicator.dart';
 import '../send_controller.dart';
 
 /// Shows the current QR frame and the playback controls.
@@ -118,6 +119,16 @@ class StreamCard extends StatelessWidget {
                     maxLines: 1,
                   ),
                 ],
+              ),
+              const SizedBox(height: M3Spacing.medium),
+              // The measured throughput sits with the QR code and the speed
+              // slider, where the user tunes the stream: the slider asks for a
+              // frame rate, this reports what the display actually sustained.
+              SpeedIndicator(
+                key: const ValueKey<String>('SendSpeedIndicator'),
+                bytesPerSecond: controller.speed.value,
+                icon: Icons.upload,
+                caption: 'payload written to the stream',
               ),
               if (frame != null) ...[
                 const SizedBox(height: M3Spacing.extraSmall),

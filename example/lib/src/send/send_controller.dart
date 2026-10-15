@@ -6,6 +6,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:qrs_dart/qrs_dart.dart';
 import 'package:signals/signals.dart';
 
+import '../transfer_rate.dart';
+
 /// Scanner URL prefix used by the official Qrs web app.
 const String defaultScannerPrefix = 'https://qrss.netlify.app/#';
 
@@ -121,6 +123,13 @@ bool shouldCompress(String? name, String type) {
 /// It owns a [SendSession] and a frame timer, and exposes everything the UI
 /// needs as signals.
 class SendController {
+  /// Creates a controller.
+  ///
+  /// [rateMeter] is the clock behind [speed]; tests drive it with a fake time
+  /// source so the measured rate is deterministic.
+  SendController({TransferRateMeter? rateMeter})
+    : _rate = rateMeter ?? TransferRateMeter();
+
   /// Payload being transmitted, metadata included.
   final data = signal<Uint8List?>(null);
 
@@ -160,9 +169,18 @@ class SendController {
   /// Last rendering duration in microseconds.
   final renderMicros = signal<int>(0);
 
+  /// Measured payload throughput in bytes per second.
+  ///
+  /// Every frame that goes on screen while the stream is playing contributes its
+  /// share of the payload; the value is the rate of the last few seconds, so it
+  /// is what the display actually sustains rather than the frame rate the slider
+  /// asks for.
+  final speed = signal<double>(0);
+
   /// Last error message, if any.
   final error = signal<String?>(null);
 
+  final TransferRateMeter _rate;
   SendSession? _session;
   Timer? _timer;
   Timer? _preRenderTimer;
@@ -173,6 +191,16 @@ class SendController {
 
   /// Payload size in bytes after compression.
   int get payloadBytes => _session?.payloadBytes ?? 0;
+
+  /// Payload bytes one frame carries, on average.
+  ///
+  /// The fountain XORs blocks padded to the slice size, so the buffer a frame
+  /// puts on the wire is mostly padding for a small payload — a 60-byte message
+  /// still travels in a 1 KiB block. The payload is what the transfer is moving,
+  /// so the rate counts `payloadBytes / blockCount` per frame, the same mean the
+  /// scan page counts per accepted frame.
+  int get bytesPerFrame =>
+      blockCount == 0 ? 0 : (payloadBytes / blockCount).round();
 
   /// Time between two frames at the current [fps].
   Duration get frameInterval => Duration(
@@ -285,7 +313,16 @@ class SendController {
     _preRendered = null;
     frame.value = upcoming;
     frameCount.value++;
+    // The frame the user is looking at is the one that was transmitted; the
+    // single frame a rebuild publishes while paused is a preview, not traffic.
+    if (isPlaying.value) _recordSpeed();
     _preRender();
+  }
+
+  /// Feeds one published frame into the rate meter.
+  void _recordSpeed() {
+    _rate.record(bytesPerFrame);
+    speed.value = _rate.bytesPerSecond;
   }
 
   /// Encodes one frame and records how long it took.
@@ -355,10 +392,15 @@ class SendController {
   }
 
   /// Stops streaming frames.
+  ///
+  /// A paused stream is not transferring anything, so the meter is cleared with
+  /// the timer instead of leaving the last reading on screen.
   void stop() {
     _timer?.cancel();
     _timer = null;
     isPlaying.value = false;
+    _rate.clear();
+    speed.value = 0;
   }
 
   /// Encodes the transfer as an animated GIF, or `null` when cancelled.
@@ -407,6 +449,7 @@ class SendController {
     frameCount.dispose();
     isPlaying.dispose();
     renderMicros.dispose();
+    speed.dispose();
     error.dispose();
   }
 }

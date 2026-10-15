@@ -3,6 +3,7 @@ import 'package:signals_flutter/signals_flutter.dart';
 
 import '../../design/tokens.dart';
 import '../../widgets/section_card.dart';
+import '../../widgets/speed_indicator.dart';
 import '../scan_controller.dart';
 
 /// Transfer progress and the per-block status grid.
@@ -36,6 +37,18 @@ class ProgressCard extends StatelessWidget {
               // Size and corner come from the progress-indicator theme.
               LinearProgressIndicator(
                 value: complete ? 1 : (k == 0 ? 0 : decoded / k),
+              ),
+              const SizedBox(height: M3Spacing.large),
+              // The payload rate: live while frames arrive, the transfer's
+              // average once it is done (a single-frame transfer never has a
+              // "current" rate worth showing).
+              SpeedIndicator(
+                key: const ValueKey<String>('ScanSpeedIndicator'),
+                bytesPerSecond: controller.speed.value,
+                icon: Icons.download,
+                caption: complete
+                    ? 'average over the transfer'
+                    : 'payload recovered per second',
               ),
               const SizedBox(height: M3Spacing.large),
               StatRow('Blocks (k)', '$k'),

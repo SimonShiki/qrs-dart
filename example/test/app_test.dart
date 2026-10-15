@@ -3,10 +3,11 @@ import 'package:material_ui/material_ui.dart';
 import 'package:qrs_dart_example/main.dart';
 import 'package:qrs_dart_example/src/design/theme.dart';
 import 'package:qrs_dart_example/src/design/tokens.dart';
-import 'package:qrs_dart_example/src/platform/platform_support.dart';
 import 'package:qrs_dart_example/src/qr_matrix_view.dart';
 import 'package:qrs_dart_example/src/send/send_controller.dart';
 import 'package:qrs_dart_example/src/send/widgets/stream_card.dart';
+import 'package:qrs_dart_example/src/transfer_rate.dart';
+import 'package:qrs_dart_example/src/widgets/speed_indicator.dart';
 
 /// The scroll view of a page, addressed by its storage key.
 ///
@@ -211,5 +212,52 @@ void main() {
     await tester.pump();
     await tester.tap(find.byIcon(Icons.pause));
     await tester.pump();
+  });
+
+  testWidgets('shows the measured transfer speed while streaming', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(900, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(const QrsExampleApp());
+
+    await tester.tap(find.text('Send text'));
+    await tester.pump();
+    await tester.tap(find.widgetWithText(FilledButton, 'Send'));
+    await tester.pump();
+
+    final indicatorFinder = find.byKey(
+      const ValueKey<String>('SendSpeedIndicator'),
+    );
+    await tester.ensureVisible(indicatorFinder);
+    await tester.pump();
+    expect(indicatorFinder, findsOneWidget);
+
+    // Nothing is travelling yet, and the preview frame is not traffic.
+    expect(find.text('0 B/s'), findsWidgets);
+
+    // Half a second of streaming at the default 15 fps is measured traffic: the
+    // readout and the inspect row both carry the formatted rate. The meter reads
+    // the clock that `pump` advances, so this is the production path.
+    await tester.pump(const Duration(milliseconds: 500));
+    final indicator = tester.widget<SpeedIndicator>(indicatorFinder);
+    expect(indicator.bytesPerSecond, greaterThan(0));
+    // The 20-byte message plus its metadata is ~84 payload bytes per frame, so
+    // the reading sits near 1.3 KiB/s -- nowhere near the ~15 KiB/s that
+    // counting the fountain's 1 KiB padded block would report.
+    expect(indicator.bytesPerSecond, lessThan(4 * 1024));
+    expect(
+      find.text(formatTransferRate(indicator.bytesPerSecond)),
+      findsWidgets,
+    );
+
+    // Pausing is not transferring: the reading goes back to zero.
+    await tester.ensureVisible(find.byIcon(Icons.pause));
+    await tester.pump();
+    await tester.tap(find.byIcon(Icons.pause));
+    await tester.pump();
+    expect(find.text('0 B/s'), findsWidgets);
   });
 }
